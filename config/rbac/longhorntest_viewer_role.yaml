@@ -1,0 +1,20 @@
+# permissions for end users to view longhorntests.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: longhorntest-viewer-role
+rules:
+- apiGroups:
+  - test.zuya.dev.zuya.dev
+  resources:
+  - longhorntests
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - test.zuya.dev.zuya.dev
+  resources:
+  - longhorntests/status
+  verbs:
+  - get

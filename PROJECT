@@ -3,4 +3,14 @@ layout:
 - go.kubebuilder.io/v3
 projectName: longhorn-test
 repo: zuya.dev/longhorn-test
+resources:
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: zuya.dev
+  group: test.zuya.dev
+  kind: LonghornTest
+  path: zuya.dev/longhorn-test/api/v1
+  version: v1
 version: "3"

@@ -1,0 +1,24 @@
+# permissions for end users to edit longhorntests.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: longhorntest-editor-role
+rules:
+- apiGroups:
+  - test.zuya.dev.zuya.dev
+  resources:
+  - longhorntests
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - test.zuya.dev.zuya.dev
+  resources:
+  - longhorntests/status
+  verbs:
+  - get

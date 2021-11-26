@@ -1,0 +1,6 @@
+apiVersion: test.zuya.dev.zuya.dev/v1
+kind: LonghornTest
+metadata:
+  name: longhorntest-sample
+spec:
+  # TODO(user): Add fields here
