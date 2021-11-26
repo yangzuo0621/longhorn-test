@@ -1,0 +1,6 @@
+domain: zuya.dev
+layout:
+- go.kubebuilder.io/v3
+projectName: longhorn-test
+repo: zuya.dev/longhorn-test
+version: "3"
