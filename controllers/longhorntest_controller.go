@@ -18,7 +18,15 @@ package controllers
 
 import (
 	"context"
+	"fmt"
+	"math/rand"
+	"strings"
+	"time"
 
+	k8sbatchv1 "k8s.io/api/batch/v1"
+	k8scorev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
+	k8smetav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -26,6 +34,19 @@ import (
 
 	testzuyadevv1 "zuya.dev/longhorn-test/api/v1"
 )
+
+const (
+	clientCredentialsSecretName = "aks-e2e-client-credentials"
+)
+
+var (
+	nameLetters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+	nameRand    *rand.Rand
+)
+
+func init() {
+	nameRand = rand.New(rand.NewSource(time.Now().UnixNano()))
+}
 
 // LonghornTestReconciler reconciles a LonghornTest object
 type LonghornTestReconciler struct {
@@ -47,9 +68,63 @@ type LonghornTestReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.10.0/pkg/reconcile
 func (r *LonghornTestReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	_ = log.FromContext(ctx)
+	logger := log.FromContext(ctx)
 
-	// TODO(user): your logic here
+	logger.V(1).Info(fmt.Sprintf("updating %s", req))
+
+	var longhornTest testzuyadevv1.LonghornTest
+	err := r.Client.Get(ctx, req.NamespacedName, &longhornTest)
+	if err != nil {
+		logger.Error(err, "failed to fetch longhorn test")
+		return ctrl.Result{}, client.IgnoreNotFound(err)
+	}
+
+	logger.V(1).Info(fmt.Sprintf("image: %s", longhornTest.Spec.Image))
+
+	goalJob := k8sbatchv1.Job{
+		ObjectMeta: k8smetav1.ObjectMeta{
+			Name:      fmt.Sprintf("%s-%s", "longhorntest", kubenizeName(generateSessionID())),
+			Namespace: longhornTest.Namespace,
+		},
+		Spec: k8sbatchv1.JobSpec{
+			Template: k8scorev1.PodTemplateSpec{
+				Spec: k8scorev1.PodSpec{
+					RestartPolicy: k8scorev1.RestartPolicyNever,
+					Containers: []k8scorev1.Container{
+						{
+							Name:  "longhorn-test",
+							Image: longhornTest.Spec.Image,
+							Resources: k8scorev1.ResourceRequirements{
+								Requests: k8scorev1.ResourceList{
+									k8scorev1.ResourceCPU:    resource.MustParse("50m"),
+									k8scorev1.ResourceMemory: resource.MustParse("250Mi"),
+								},
+							},
+							EnvFrom: []k8scorev1.EnvFromSource{
+								{
+									SecretRef: &k8scorev1.SecretEnvSource{
+										LocalObjectReference: k8scorev1.LocalObjectReference{
+											Name: clientCredentialsSecretName,
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	job := &k8sbatchv1.Job{}
+	goalJob.ObjectMeta.DeepCopyInto(&job.ObjectMeta)
+	goalJob.Spec.DeepCopyInto(&job.Spec)
+	job.Namespace = longhornTest.Namespace
+
+	if err := r.Create(ctx, job); err != nil {
+		logger.Error(err, "unable to create Job for LonghornTest", "job", job)
+		return ctrl.Result{}, err
+	}
 
 	return ctrl.Result{}, nil
 }
@@ -59,4 +134,31 @@ func (r *LonghornTestReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&testzuyadevv1.LonghornTest{}).
 		Complete(r)
+}
+
+func kubenizeName(name string) string {
+	name = strings.ToLower(name)
+	name = strings.ReplaceAll(name, "_", "-")
+
+	return name
+}
+
+func generateSessionID() string {
+	return fmt.Sprintf(
+		"%s-%s",
+		time.Now().Format("200601020304"),
+		generateRandomName(5),
+	)
+}
+
+func generateRandomName(length int) string {
+	if length < 1 {
+		return ""
+	}
+
+	b := make([]rune, length, length)
+	for i := range b {
+		b[i] = nameLetters[nameRand.Intn(len(nameLetters))]
+	}
+	return string(b)
 }

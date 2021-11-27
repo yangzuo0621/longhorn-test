@@ -28,8 +28,7 @@ type LonghornTestSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
-	// Foo is an example field of LonghornTest. Edit longhorntest_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
+	Image string `json:"image"`
 }
 
 // LonghornTestStatus defines the observed state of LonghornTest

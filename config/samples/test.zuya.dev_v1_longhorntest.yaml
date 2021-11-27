@@ -3,4 +3,4 @@ kind: LonghornTest
 metadata:
   name: longhorntest-sample
 spec:
-  # TODO(user): Add fields here
+  image: aksdeve2e.azurecr.io/longhorn:zuya20211127test3
